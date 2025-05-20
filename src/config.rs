@@ -11,6 +11,9 @@ pub struct NetworkConfig {
 pub struct StationConfig {
     pub station_name: String,
     pub interval: Option<u64>,
+    pub gps_h: Option<f64>,
+    pub gps_lat: Option<f64>,
+    pub gps_lon: Option<f64>,
 }
 
 #[derive(Debug, Deserialize)]

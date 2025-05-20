@@ -1,5 +1,6 @@
 mod api;
 mod config;
+mod geolocation;
 mod serial;
 mod storage;
 mod wifi;
@@ -8,7 +9,8 @@ use crate::config::AppConfig;
 use log::{error, info};
 use std::{env, thread, time::Duration};
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     let cfg = AppConfig::from_file("config.toml")?;
     let cli_args: Vec<String> = env::args().collect();
@@ -20,16 +22,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ntp_host = cfg.network.ntp_host.as_deref().unwrap_or("203.107.6.88");
     rsdate::sync_ntp_and_set_time(ntp_host, 5, 3, true, true)?;
     let interval = cli_interval.or(cfg.station.interval).unwrap_or(60);
+    let gps_device = false;
+    let config_location = geolocation::gps::GEOlocation::from_config(&cfg);
     loop {
         match serial::query_wind_speed() {
             Ok(wind_speed) => {
-                let gps_h = 0.0;
+                let geolocation = if gps_device {
+                    // TODO: 从 GPS 硬件读取 async need
+                    info!("获取GPS定位成功");
+                    config_location.clone()
+                } else {
+                    config_location.clone()
+                };
                 if let Err(e) = storage::save_to_tf(wind_speed) {
                     error!("存储失败: {}", e);
                 }
 
                 if wifi::is_connected(&cfg.network.check_host) {
-                    if let Err(e) = api::upload_data(&cfg.station.station_name, wind_speed, gps_h) {
+                    if let Err(e) =
+                        api::upload_data(&cfg.station.station_name, wind_speed, geolocation).await
+                    {
                         error!("上传失败: {}", e);
                     }
                 } else {

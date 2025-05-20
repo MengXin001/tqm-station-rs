@@ -1,6 +1,9 @@
 [network]
 check_host = "119.29.29.29"
-ntp_host = ""
+ntp_host = "203.107.6.88"
 [station]
 station_name = "tqm Station"
 interval = 30
+gps_h = 30.0
+gps_lat = 32.03377
+gps_lon = 118.84059

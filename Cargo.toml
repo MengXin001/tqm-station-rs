@@ -1,18 +1,29 @@
 [package]
-name = "tqm-sensor"
+name = "tqm-station"
 version = "0.1.0"
 edition = "2024"
 
+authors = [
+    "MengXin001 <admin@moexin.cn>"
+]
+repository = "https://github.com/MengXin001/tqm-station-rs"
+
 [dependencies]
-serialport = "4.7.2"
-serde = { version="1.0.219", default-features = false , features = ["derive"] }
-serde_json = "1.0"
-reqwest = { version = "0.12", default-features = false, features = ["json", "blocking"] }
 chrono = "0.4"
-config = { version = "0.15.11", default-features = false,  features = ["toml"] }
+config = { version = "0.15.11", default-features = false, features = ["toml"] }
 env_logger = "0.11.8"
 log = "0.4.27"
+reqwest = { version = "0.12", default-features = false, features = ["json"] }
 rsdate = { path = "./rsdate" }
+serde = { version = "1.0.219", default-features = false, features = ["derive"] }
+serde_json = "1.0"
+serialport = "4.7.2"
+tokio = { version = "1.45.0",features = ["full"] }
 
 [profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
 strip = true
+panic = "abort"
+incremental = false
