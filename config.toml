@@ -1,0 +1,6 @@
+[network]
+check_host = "119.29.29.29"
+ntp_host = ""
+[station]
+station_name = "tqm Station"
+interval = 30
