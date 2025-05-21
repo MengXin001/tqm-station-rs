@@ -5,28 +5,41 @@ mod serial;
 mod storage;
 mod wifi;
 
-use crate::config::AppConfig;
 use log::{error, info};
-use std::{env, thread, time::Duration};
+use std::{env, f64::NAN, thread, time::Duration};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
-    let cfg = AppConfig::from_file("config.toml")?;
+    let cfg = config::AppConfig::from_file("config.toml")?;
     let cli_args: Vec<String> = env::args().collect();
     let cli_interval = cli_args
         .iter()
         .position(|arg| arg == "-t")
         .and_then(|i| cli_args.get(i + 1))
         .and_then(|s| s.parse::<u64>().ok());
+
     let ntp_host = cfg.network.ntp_host.as_deref().unwrap_or("203.107.6.88");
-    rsdate::sync_ntp_and_set_time(ntp_host, 5, 3, true, true)?;
+    let _ = rsdate::sync_ntp_and_set_time(ntp_host, 5, 3, true, true)?;
+
     let interval = cli_interval.or(cfg.station.interval).unwrap_or(60);
     let gps_device = false;
-    let config_location = geolocation::gps::GEOlocation::from_config(&cfg);
+
+    let local_storage = cfg.storage.local_storage.unwrap_or(false);
+    let config_location = geolocation::GEOlocation::from_config(&cfg);
+    let (local_storage_tx, local_storage_rx) = tokio::sync::mpsc::channel(10);
+    if local_storage {
+        let _ = storage::init_storage_task(local_storage_rx);
+    }
+    // placeholder
+    let temperature = NAN;
+    let humidity = NAN;
+    let pressure = NAN;
+
     loop {
         match serial::query_wind_speed() {
             Ok(wind_speed) => {
+                let timestamp_now = chrono::Utc::now().timestamp();
                 let geolocation = if gps_device {
                     // TODO: 从 GPS 硬件读取 async need
                     info!("获取GPS定位成功");
@@ -34,13 +47,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 } else {
                     config_location.clone()
                 };
-                if let Err(e) = storage::save_to_tf(wind_speed) {
-                    error!("存储失败: {}", e);
+                let data_block = storage::DataBlock {
+                    timestamp: timestamp_now,
+                    temperature,
+                    humidity,
+                    pressure,
+                    wind_speed,
+                    lat: geolocation.lat,
+                    lon: geolocation.lon,
+                    height: geolocation.height,
+                };
+                if local_storage {
+                    let _ = storage::enqueue_storage_data(
+                        &local_storage_tx,
+                        data_block.clone(),
+                    );
                 }
-
-                if wifi::is_connected(&cfg.network.check_host) {
+                if wifi::is_connected(&cfg.network.check_host).await {
                     if let Err(e) =
-                        api::upload_data(&cfg.station.station_name, wind_speed, geolocation).await
+                        api::upload_data(&cfg.station.station_name, data_block).await
                     {
                         error!("上传失败: {}", e);
                     }

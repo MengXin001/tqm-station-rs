@@ -2,27 +2,26 @@ use chrono::Utc;
 use log::info;
 use serde_json::json;
 
-use crate::geolocation::gps::GEOlocation;
-
-pub async fn upload_data(station_name: &str, wind_speed: f64, gps: GEOlocation) -> Result<(), reqwest::Error> {
+use crate::storage::DataBlock;
+pub async fn upload_data(station_name: &str, data: DataBlock) -> Result<(), reqwest::Error> {
     let data = json!({
-        "timestamp": Utc::now().timestamp(),
+        "timestamp": data.timestamp,
         "instrument": station_name,
         "observation": {
-            "t": 0,
-            "rh": 0,
-            "p": 0,
+            "t": data.temperature,
+            "rh": data.humidity,
+            "p": data.pressure,
             "dt": 0,
             "mslp": 0
         },
         "wind": {
-            "spd": wind_speed,
+            "spd": data.wind_speed,
             "dir": 0
         },
         "gps": {
-            "lat": gps.lat,
-            "long": gps.lon,
-            "alt": gps.height,
+            "lat": data.lat,
+            "long": data.lon,
+            "alt": data.height,
             "dir": 0,
             "speed": 0
         }

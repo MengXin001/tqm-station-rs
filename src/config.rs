@@ -15,11 +15,17 @@ pub struct StationConfig {
     pub gps_lat: Option<f64>,
     pub gps_lon: Option<f64>,
 }
-
+#[derive(Debug, Deserialize)]
+pub struct StorageConfig {
+    pub local_storage: Option<bool>,
+    pub local_storage_path: Option<String>,
+    pub local_storage_interval: Option<u64>,
+}
 #[derive(Debug, Deserialize)]
 pub struct AppConfig {
     pub network: NetworkConfig,
     pub station: StationConfig,
+    pub storage: StorageConfig,
 }
 
 impl AppConfig {

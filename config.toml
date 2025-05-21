@@ -7,3 +7,5 @@ interval = 30
 gps_h = 30.0
 gps_lat = 32.03377
 gps_lon = 118.84059
+[storage]
+local_storage = false

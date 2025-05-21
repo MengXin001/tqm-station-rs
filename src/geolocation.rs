@@ -1,4 +1,5 @@
-use crate::AppConfig;
+use crate::config::AppConfig;
+
 #[derive(Clone)]
 pub struct GEOlocation {
     pub lat: f64,

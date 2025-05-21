@@ -1,6 +1,7 @@
 use std::io::{self, Read, Write};
 use std::time::Duration;
-use log::{error, info, warn};
+use log::info;
+
 const WIND_SPEED_QUERY: [u8; 8] = [0x02, 0x03, 0x00, 0x00, 0x00, 0x01, 0x84, 0x39];
 
 pub fn query_wind_speed() -> io::Result<f64> {
@@ -15,12 +16,12 @@ pub fn query_wind_speed() -> io::Result<f64> {
     port.write_all(&WIND_SPEED_QUERY)?;
     std::thread::sleep(Duration::from_millis(1000));
 
-    let mut buffer = [0u8; 128];
+    let mut buffer = [0u8; 8];
     let len = port.read(&mut buffer)?;
 
     if len == 7 && buffer[0] == 0x02 && buffer[1] == 0x03 {
-        let fs10 = (buffer[3] as u16) << 8 | (buffer[4] as u16);
-        let ws = fs10 as f64 / 10.0;
+        let ws10 = (buffer[3] as u16) << 8 | (buffer[4] as u16);
+        let ws = ws10 as f64 / 10.0;
         info!("风速: {} m/s", ws);
         Ok(ws)
     } else {
