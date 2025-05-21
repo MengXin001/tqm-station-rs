@@ -23,10 +23,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _ = rsdate::sync_ntp_and_set_time(ntp_host, 5, 3, true, true)?;
 
     let interval = cli_interval.or(cfg.station.interval).unwrap_or(60);
-    let gps_device = false;
-
-    let local_storage = cfg.storage.local_storage.unwrap_or(false);
     let config_location = geolocation::GEOlocation::from_config(&cfg);
+    let local_storage = cfg.storage.local_storage.unwrap_or(false);
     let (local_storage_tx, local_storage_rx) = tokio::sync::mpsc::channel(10);
     if local_storage {
         let _ = storage::init_storage_task(local_storage_rx);
@@ -35,13 +33,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let temperature = NAN;
     let humidity = NAN;
     let pressure = NAN;
+    let gps_device = false;
 
     loop {
         match serial::query_wind_speed() {
             Ok(wind_speed) => {
                 let timestamp_now = chrono::Utc::now().timestamp();
                 let geolocation = if gps_device {
-                    // TODO: 从 GPS 硬件读取 async need
+                    // TODO: 从GPS硬件读取 async need
                     info!("获取GPS定位成功");
                     config_location.clone()
                 } else {
@@ -58,15 +57,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     height: geolocation.height,
                 };
                 if local_storage {
-                    let _ = storage::enqueue_storage_data(
-                        &local_storage_tx,
-                        data_block.clone(),
-                    );
+                    let _ = storage::enqueue_storage_data(&local_storage_tx, data_block.clone());
                 }
+                // disable in high frequency sampling
                 if wifi::is_connected(&cfg.network.check_host).await {
-                    if let Err(e) =
-                        api::upload_data(&cfg.station.station_name, data_block).await
-                    {
+                    if let Err(e) = api::upload_data(&cfg.station.station_name, data_block).await {
                         error!("上传失败: {}", e);
                     }
                 } else {
