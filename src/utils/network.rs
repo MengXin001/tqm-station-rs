@@ -1,6 +1,6 @@
 pub async fn is_connected(check_host: &str) -> bool {
     for _ in 0..2 {
-        let success = tokio::process::Command::new("ping")
+        let alive = tokio::process::Command::new("ping")
             .arg("-c1")
             .arg("-W5")
             .arg(check_host)
@@ -8,7 +8,7 @@ pub async fn is_connected(check_host: &str) -> bool {
             .await
             .map(|o| o.status.success())
             .unwrap_or(false);
-        if success {
+        if alive {
             return true;
         }
     }

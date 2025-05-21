@@ -9,3 +9,4 @@ gps_lat = 32.03377
 gps_lon = 118.84059
 [storage]
 local_storage = false
+flush_interval = 5

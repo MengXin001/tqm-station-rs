@@ -18,8 +18,8 @@ pub struct DataBlock {
 }
 
 impl DataBlock {
-    pub fn to_bytes(&self) -> [u8; 62] {
-        let mut data_buffer = [0u8; 62];
+    pub fn to_bytes(&self) -> [u8; 64] {
+        let mut data_buffer = [0u8; 64];
         data_buffer[..8].copy_from_slice(&self.timestamp.to_le_bytes());
         data_buffer[8..16].copy_from_slice(&self.temperature.to_le_bytes());
         data_buffer[16..24].copy_from_slice(&self.humidity.to_le_bytes());
@@ -27,12 +27,12 @@ impl DataBlock {
         data_buffer[32..40].copy_from_slice(&self.wind_speed.to_le_bytes());
         data_buffer[40..48].copy_from_slice(&self.lat.to_le_bytes());
         data_buffer[48..56].copy_from_slice(&self.lon.to_le_bytes());
-        data_buffer[56..62].copy_from_slice(&self.height.to_le_bytes());
+        data_buffer[56..64].copy_from_slice(&self.height.to_le_bytes());
         data_buffer
     }
 }
 
-pub fn init_storage_task(mut local_storage_rx: Receiver<DataBlock>) {
+pub fn init_storage_task(mut local_storage_rx: Receiver<DataBlock>, flush_interval: u64) {
     task::spawn_blocking(move || process_storage_queue(&mut local_storage_rx));
 }
 

@@ -3,7 +3,7 @@ mod config;
 mod geolocation;
 mod serial;
 mod storage;
-mod wifi;
+mod utils;
 
 use log::{error, info};
 use std::{env, f64::NAN, thread, time::Duration};
@@ -22,13 +22,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ntp_host = cfg.network.ntp_host.as_deref().unwrap_or("203.107.6.88");
     let _ = rsdate::sync_ntp_and_set_time(ntp_host, 5, 3, true, true)?;
 
-    let interval = cli_interval.or(cfg.station.interval).unwrap_or(60);
-    let config_location = geolocation::GEOlocation::from_config(&cfg);
+    // config
+    let sample_interval = cli_interval.or(cfg.station.interval).unwrap_or(60);
+    let config_location = geolocation::GEOlocation::from_config(&cfg); // 预设坐标
+    /// 本地存储
     let local_storage = cfg.storage.local_storage.unwrap_or(false);
     let (local_storage_tx, local_storage_rx) = tokio::sync::mpsc::channel(10);
     if local_storage {
-        let _ = storage::init_storage_task(local_storage_rx);
+        let flush_interval = cfg.storage.flush_interval.unwrap_or(5);
+        let _ = storage::init_storage_task(local_storage_rx, flush_interval);
     }
+
     // placeholder
     let temperature = NAN;
     let humidity = NAN;
@@ -36,11 +40,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let gps_device = false;
 
     loop {
-        match serial::query_wind_speed() {
+        match serial::query_wind_speed() { // TODO: serial -> trait
             Ok(wind_speed) => {
                 let timestamp_now = chrono::Utc::now().timestamp();
                 let geolocation = if gps_device {
-                    // TODO: 从GPS硬件读取 async need
+                    // TODO: 从GPS硬件读取 blocking need
                     info!("获取GPS定位成功");
                     config_location.clone()
                 } else {
@@ -60,7 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let _ = storage::enqueue_storage_data(&local_storage_tx, data_block.clone());
                 }
                 // disable in high frequency sampling
-                if wifi::is_connected(&cfg.network.check_host).await {
+                if utils::network::is_connected(&cfg.network.check_host).await {
                     if let Err(e) = api::upload_data(&cfg.station.station_name, data_block).await {
                         error!("上传失败: {}", e);
                     }
@@ -71,6 +75,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Err(e) => error!("RS485通信失败: {}", e),
         }
 
-        thread::sleep(Duration::from_secs(interval));
+        thread::sleep(Duration::from_secs(sample_interval));
     }
 }
