@@ -6,7 +6,7 @@ mod storage;
 mod utils;
 
 use log::{error, info};
-use std::{env, f64::NAN, thread, time::Duration};
+use std::{env, f64::NAN, os::macos::raw::stat, thread, time::Duration};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -64,17 +64,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let _ = storage::enqueue_storage_data(&local_storage_tx, data_block.clone());
                 }
                 // disable in high frequency sampling
-                if utils::network::is_connected(&cfg.network.check_host).await {
-                    if let Err(e) = api::upload_data(&cfg.station.station_name, data_block).await {
-                        error!("上传失败: {}", e);
+                let station_name = cfg.station.station_name.clone();
+                let check_host = cfg.network.check_host.clone();
+                tokio::spawn(async move {
+                    if utils::network::is_connected(&check_host).await {
+                        if let Err(e) = api::upload_data(&station_name, data_block).await {
+                            error!("上传失败: {}", e);
+                        }
+                    } else {
+                        error!("网络连接失败");
                     }
-                } else {
-                    error!("网络连接失败");
-                }
+                });
             }
             Err(e) => error!("RS485通信失败: {}", e),
         }
 
-        thread::sleep(Duration::from_secs(sample_interval));
+        let _ = tokio::time::sleep(Duration::from_secs(sample_interval));
     }
 }

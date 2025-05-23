@@ -36,6 +36,6 @@ pub async fn upload_data(station_name: &str, data: DataBlock) -> Result<(), reqw
         .json(&data)
         .send()
         .await?;
-    info!("上传结果: {}", res.status());
+    info!("sdkAPI上传结果: {}", res.status());
     Ok(())
 }
