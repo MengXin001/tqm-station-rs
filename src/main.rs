@@ -6,7 +6,7 @@ mod storage;
 mod utils;
 
 use log::{error, info};
-use std::{env, f64::NAN, os::macos::raw::stat, thread, time::Duration};
+use std::{env, f64::NAN, time::Duration};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
