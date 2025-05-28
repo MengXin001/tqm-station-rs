@@ -9,15 +9,15 @@ pub fn query_wind_speed() -> io::Result<f64> {
     let baud_rate = 9600;
     let timeout = Duration::from_millis(1500);
 
-    let mut port = serialport::new(port_name, baud_rate)
+    let mut serialport = serialport::new(port_name, baud_rate)
         .timeout(timeout)
         .open()?;
 
-    port.write_all(&WIND_SPEED_QUERY)?;
+    serialport.write_all(&WIND_SPEED_QUERY)?;
     std::thread::sleep(Duration::from_millis(1000));
 
     let mut buffer = [0u8; 8];
-    let len = port.read(&mut buffer)?;
+    let len = serialport.read(&mut buffer)?;
 
     if len == 7 && buffer[0] == 0x02 && buffer[1] == 0x03 {
         let ws10 = (buffer[3] as u16) << 8 | (buffer[4] as u16);

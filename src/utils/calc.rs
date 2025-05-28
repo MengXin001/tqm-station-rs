@@ -1,5 +1,5 @@
 pub fn mslp(p: f64, h: f64, t: f64) -> f64 {
-    if p.is_nan() || t.is_nan() {
+    if p.is_nan() || h.is_nan() || t.is_nan() {
         return f64::NAN;
     }
     return p * ((1.0 - 0.0065 * h / (t + 0.0065 * h + 273.15)).powf(-5.257));

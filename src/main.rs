@@ -6,24 +6,25 @@ mod storage;
 mod utils;
 
 use log::{error, info};
-use std::{env, f64::NAN, time::Duration};
+use std::{f64::NAN, time::Duration};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    env_logger::init();
     let cfg = config::AppConfig::from_file("config.toml")?;
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(cfg.station.log_level.clone().unwrap_or("warn".to_string()))).init();
+    /*
     let cli_args: Vec<String> = env::args().collect();
     let cli_interval = cli_args
         .iter()
         .position(|arg| arg == "-t")
         .and_then(|i| cli_args.get(i + 1))
         .and_then(|s| s.parse::<u64>().ok());
-
-    let ntp_host = cfg.network.ntp_host.as_deref().unwrap_or("203.107.6.88");
+    */
+    let ntp_host = cfg.network.ntp_host.as_deref().unwrap_or("ntp.aliyun.com");
     let _ = rsdate::sync_ntp_and_set_time(ntp_host, 5, 3, true, true)?;
 
     // config
-    let sample_interval = cli_interval.or(cfg.station.interval).unwrap_or(60);
+    let sample_interval = cfg.station.interval.unwrap_or(6.9);
     let config_location = geolocation::GEOlocation::from_config(&cfg); // 预设坐标
     /// 本地存储
     let local_storage = cfg.storage.local_storage.unwrap_or(false);
@@ -63,7 +64,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 if local_storage {
                     let _ = storage::enqueue_storage_data(&local_storage_tx, data_block.clone());
                 }
-                // disable in high frequency sampling
+                if sample_interval < 1.0 {
+                    return Ok(());
+                }
                 let station_name = cfg.station.station_name.clone();
                 let check_host = cfg.network.check_host.clone();
                 tokio::spawn(async move {
@@ -79,6 +82,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Err(e) => error!("RS485通信失败: {}", e),
         }
 
-        let _ = tokio::time::sleep(Duration::from_secs(sample_interval));
+        let _ = tokio::time::sleep(Duration::from_secs_f32(sample_interval)).await;
     }
 }
