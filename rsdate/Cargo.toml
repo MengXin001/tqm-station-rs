@@ -18,7 +18,7 @@ categories = ["command-line-utilities", "date-and-time"]
 
 [dependencies]
 libc = "0.2.126"
-log = "0.4.17"
+log = "0.4.27"
 rsntp = { version = "3.0.1", default-features = false, features = ["time"] }
 syslog = "6.0.1"
 time = { version = "0.3.11", features = ["local-offset"] }

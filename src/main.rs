@@ -6,7 +6,7 @@ mod storage;
 mod utils;
 
 use log::{error, info};
-use std::{f64::NAN, time::Duration};
+use std::{f64::NAN, time::{Duration, Instant}};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -20,11 +20,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and_then(|i| cli_args.get(i + 1))
         .and_then(|s| s.parse::<u64>().ok());
     */
-    let ntp_host = cfg.network.ntp_host.as_deref().unwrap_or("ntp.aliyun.com");
-    let _ = rsdate::sync_ntp_and_set_time(ntp_host, 5, 3, true, true)?;
+    let ntp_host = cfg.network.ntp_host.as_deref().unwrap_or("203.107.6.88");
+    let _ = rsdate::sync_ntp_and_set_time(ntp_host, 5, 3, true, true).unwrap();
 
     // config
-    let sample_interval = cfg.station.interval.unwrap_or(6.9);
+    let sample_interval = cfg.station.interval.unwrap_or(60.0);
     let config_location = geolocation::GEOlocation::from_config(&cfg); // 预设坐标
     /// 本地存储
     let local_storage = cfg.storage.local_storage.unwrap_or(false);
@@ -41,7 +41,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let gps_device = false;
 
     loop {
-        match serial::query_wind_speed() { // TODO: serial -> trait
+        match serial::query_wind_speed() {
+            // TODO: serial -> trait
             Ok(wind_speed) => {
                 let timestamp_now = chrono::Utc::now().timestamp();
                 let geolocation = if gps_device {

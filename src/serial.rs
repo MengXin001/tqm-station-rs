@@ -14,7 +14,6 @@ pub fn query_wind_speed() -> io::Result<f64> {
         .open()?;
 
     serialport.write_all(&WIND_SPEED_QUERY)?;
-    std::thread::sleep(Duration::from_millis(1000));
 
     let mut buffer = [0u8; 8];
     let len = serialport.read(&mut buffer)?;
