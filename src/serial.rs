@@ -1,8 +1,11 @@
 use std::io::{self, Read, Write};
 use std::time::Duration;
-use log::info;
+use crate::utils::bosch::BME280;
+use crate::libs::i2c::SoftI2C;
 
 const WIND_SPEED_QUERY: [u8; 8] = [0x02, 0x03, 0x00, 0x00, 0x00, 0x01, 0x84, 0x39];
+const SDA_PIN_NUM: u64 = 11; // GPIO0_B3_d => GPIO 11
+const SCL_PIN_NUM: u64 = 12; // GPIO0_B4_d => GPIO 12
 
 pub fn query_wind_speed() -> io::Result<f64> {
     let port_name = "/dev/ttyS3";
@@ -21,9 +24,23 @@ pub fn query_wind_speed() -> io::Result<f64> {
     if len == 7 && buffer[0] == 0x02 && buffer[1] == 0x03 {
         let ws10 = (buffer[3] as u16) << 8 | (buffer[4] as u16);
         let ws = ws10 as f64 / 10.0;
-        info!("风速: {} m/s", ws);
         Ok(ws)
     } else {
-        Err(io::Error::new(io::ErrorKind::Other, "风速读取失败"))
+        let ws = f64::NAN;
+        Ok(ws)
     }
 }
+
+pub fn query_bme280() -> io::Result<(f64, f64, f64)> {
+    let soft_i2c = SoftI2C::new(SDA_PIN_NUM, SCL_PIN_NUM);
+    let mut bme280 = BME280::new(soft_i2c, 0x76);
+    let _ = bme280.init();
+
+    let (temperature, humidity, pressure) = bme280.read_data();
+
+    let temperature = (temperature * 100.0).round() / 100.0;
+    let humidity = (humidity * 100.0).round() / 100.0;
+    let pressure = (pressure * 10.0).round() / 1000.0;
+
+    Ok((temperature, humidity, pressure))
+}   

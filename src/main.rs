@@ -4,6 +4,7 @@ mod geolocation;
 mod serial;
 mod storage;
 mod utils;
+mod libs;
 
 use log::{error, info};
 use std::{f64::NAN, time::{Duration, Instant}};
@@ -35,53 +36,52 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // placeholder
-    let temperature = NAN;
-    let humidity = NAN;
-    let pressure = NAN;
     let gps_device = false;
 
     loop {
-        match serial::query_wind_speed() {
-            // TODO: serial -> trait
-            Ok(wind_speed) => {
-                let timestamp_now = chrono::Utc::now().timestamp();
-                let geolocation = if gps_device {
-                    // TODO: 从GPS硬件读取 blocking need
-                    info!("获取GPS定位成功");
-                    config_location.clone()
-                } else {
-                    config_location.clone()
-                };
-                let data_block = storage::DataBlock {
-                    timestamp: timestamp_now,
-                    temperature,
-                    humidity,
-                    pressure,
-                    wind_speed,
-                    lat: geolocation.lat,
-                    lon: geolocation.lon,
-                    height: geolocation.height,
-                };
-                if local_storage {
-                    let _ = storage::enqueue_storage_data(&local_storage_tx, data_block.clone());
-                }
-                if sample_interval < 1.0 {
-                    return Ok(());
-                }
-                let station_name = cfg.station.station_name.clone();
-                let check_host = cfg.network.check_host.clone();
-                tokio::spawn(async move {
-                    if utils::network::is_connected(&check_host).await {
-                        if let Err(e) = api::upload_data(&station_name, data_block).await {
-                            error!("上传失败: {}", e);
-                        }
-                    } else {
-                        error!("网络连接失败");
-                    }
-                });
-            }
-            Err(e) => error!("RS485通信失败: {}", e),
+        let timestamp_now = chrono::Utc::now().timestamp();
+        let (wind_speed, temperature, humidity, pressure) = tokio::task::spawn_blocking(|| {
+            let wind_speed = serial::query_wind_speed().unwrap_or(NAN);
+            let (temperature, humidity, pressure) = serial::query_bme280().unwrap_or((NAN, NAN, NAN));
+                (wind_speed, temperature, humidity, pressure)
+            })
+        .await
+        .unwrap();
+        info!("风速: { } m/s, 温度: { } °C, 湿度: { } %, 气压: { } hPa", wind_speed, temperature, humidity, pressure);
+        let geolocation = if gps_device {
+            // TODO: 从GPS硬件读取 blocking need
+            info!("获取GPS定位成功");
+            config_location.clone()
+        } else {
+            config_location.clone()
+        };
+        let data_block = storage::DataBlock {
+            timestamp: timestamp_now,
+            temperature,
+            humidity,
+            pressure,
+            wind_speed,
+            lat: geolocation.lat,
+            lon: geolocation.lon,
+            height: geolocation.height,
+        };
+        if local_storage {
+            let _ = storage::enqueue_storage_data(&local_storage_tx, data_block.clone());
         }
+        if sample_interval < 1.0 {
+            return Ok(());
+        }
+        let station_name = cfg.station.station_name.clone();
+        let check_host = cfg.network.check_host.clone();
+        tokio::spawn(async move {
+            if utils::network::is_connected(&check_host).await {
+                if let Err(e) = api::upload_data(&station_name, data_block).await {
+                    error!("上传失败: {}", e);
+                }
+            } else {
+                error!("网络连接失败");
+            }
+        });
 
         let _ = tokio::time::sleep(Duration::from_secs_f32(sample_interval)).await;
     }
