@@ -91,8 +91,8 @@ impl BME280 {
         self.read_calibration();
 
         self.i2c.write_register(self.address, 0xF2, 0x01); // 湿度
-        self.i2c.write_register(self.address, 0xF4, 0x27); // 气温气压
-        self.i2c.write_register(self.address, 0xF5, 0xA0); // 滤波
+        self.i2c.write_register(self.address, 0xF4, 0x25); // 气温气压
+
     }
 
     pub fn read_data(&mut self) -> (f64, f64, f64) {

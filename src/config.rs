@@ -20,6 +20,8 @@ pub struct StationConfig {
 pub struct StorageConfig {
     pub local_storage: Option<bool>,
     pub flush_interval: Option<u64>,
+    pub cloud_storage: Option<bool>,
+    pub upload_interval: Option<u64>,
 }
 #[derive(Deserialize)]
 pub struct AppConfig {

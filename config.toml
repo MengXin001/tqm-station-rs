@@ -11,3 +11,5 @@ gps_lon = 118.84059
 [storage]
 local_storage = false
 flush_interval = 5
+cloud_storage = true
+upload_interval = 5

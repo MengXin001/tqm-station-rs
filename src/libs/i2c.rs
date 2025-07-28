@@ -12,7 +12,7 @@ impl SoftI2C {
         let scl = Pin::new(scl_pin);
         sda.export().ok();
         scl.export().ok();
-        thread::sleep(Duration::from_millis(10));
+        thread::sleep(Duration::from_micros(10));
 
         sda.set_direction(Direction::Out).unwrap();
         scl.set_direction(Direction::Out).unwrap();

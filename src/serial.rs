@@ -1,7 +1,7 @@
+use crate::libs::i2c::SoftI2C;
+use crate::utils::bosch::BME280;
 use std::io::{self, Read, Write};
 use std::time::Duration;
-use crate::utils::bosch::BME280;
-use crate::libs::i2c::SoftI2C;
 
 const WIND_SPEED_QUERY: [u8; 8] = [0x02, 0x03, 0x00, 0x00, 0x00, 0x01, 0x84, 0x39];
 const SDA_PIN_NUM: u64 = 11; // GPIO0_B3_d => GPIO 11
@@ -10,7 +10,7 @@ const SCL_PIN_NUM: u64 = 12; // GPIO0_B4_d => GPIO 12
 pub fn query_wind_speed() -> io::Result<f64> {
     let port_name = "/dev/ttyS3";
     let baud_rate = 9600;
-    let timeout = Duration::from_millis(1500);
+    let timeout = Duration::from_millis(50);
 
     let mut serialport = serialport::new(port_name, baud_rate)
         .timeout(timeout)
@@ -38,9 +38,17 @@ pub fn query_bme280() -> io::Result<(f64, f64, f64)> {
 
     let (temperature, humidity, pressure) = bme280.read_data();
 
-    let temperature = (temperature * 100.0).round() / 100.0;
+    let temperature = if temperature > 85.0 || temperature < -45.0 {
+        f64::NAN
+    } else {
+        (temperature * 100.0).round() / 100.0
+    };
+    let pressure = if pressure > 110000.0 || pressure < 30000.0 {
+        f64::NAN
+    } else {
+        (pressure * 10.0).round() / 1000.0 - 2.0
+    };
     let humidity = (humidity * 100.0).round() / 100.0;
-    let pressure = (pressure * 10.0).round() / 1000.0;
 
     Ok((temperature, humidity, pressure))
-}   
+}
